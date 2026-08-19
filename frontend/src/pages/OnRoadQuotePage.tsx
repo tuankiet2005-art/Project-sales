@@ -10,7 +10,7 @@ import { languages, type Lang } from "../i18n/translations";
 import { downloadQuotePdf } from "../lib/exportQuotePdf";
 import { extrasFromVehicle, loadExtras, saveExtras } from "../lib/quoteExtras";
 import { defaultPolicyChoices, loadPolicyChoices } from "../lib/quotePolicy";
-import type { Brand, CostBreakdown as CostBreakdownType, QuoteExtras, VehicleDetail } from "../types";
+import type { CostBreakdown as CostBreakdownType, QuoteExtras, VehicleDetail } from "../types";
 
 export function OnRoadQuotePage() {
   const { vehicleId, brandCode = "" } = useParams();
@@ -34,7 +34,6 @@ export function OnRoadQuotePage() {
     ? loadPolicyChoices(id, { ...defaultPolicyChoices(), usageType })
     : defaultPolicyChoices();
 
-  const [brand, setBrand] = useState<Brand | null>(null);
   const [vehicle, setVehicle] = useState<VehicleDetail | null>(null);
   const [result, setResult] = useState<CostBreakdownType | null>(null);
   const [extras, setExtras] = useState<QuoteExtras>({ accessories: [] });
@@ -57,8 +56,8 @@ export function OnRoadQuotePage() {
     setLoading(true);
     setError(null);
 
-    Promise.all([api.getVehicle(id), api.getBrand(brandCode)])
-      .then(async ([nextVehicle, nextBrand]) => {
+    api.getVehicle(id)
+      .then(async (nextVehicle) => {
         const nextExtras = loadExtras(id, extrasFromVehicle(nextVehicle));
         const breakdown = await api.calculateOnRoadCost(
           id,
@@ -74,7 +73,6 @@ export function OnRoadQuotePage() {
           return;
         }
         setVehicle(nextVehicle);
-        setBrand(nextBrand);
         setExtras(nextExtras);
         setResult(breakdown);
       })

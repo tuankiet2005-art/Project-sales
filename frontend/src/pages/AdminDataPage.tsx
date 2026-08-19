@@ -159,7 +159,7 @@ export function AdminDataPage() {
       } else if (nextTab === "plateRegions") {
         setPlates(await api.getAdminPlateRegions());
       } else {
-        setRows((await listFor(nextTab)) as Record<string, unknown>[]);
+        setRows((await listFor(nextTab)) as unknown as Record<string, unknown>[]);
       }
     } catch (err) {
       if (err instanceof UnauthorizedError) {
@@ -907,7 +907,7 @@ function OfferLangFields({
         {t("admin.field.offerTitle_vi")}
         <input
           value={offer.title?.vi ?? ""}
-          onChange={(event) => onChange({ ...offer, title: { vi: "", en: "", zh: "", ja: "", ...offer.title, vi: event.target.value } })}
+          onChange={(event) => onChange({ ...offer, title: { en: "", zh: "", ja: "", ...offer.title, vi: event.target.value } })}
           onBlur={() => void translateField("title")}
           className="mt-1 h-10 w-full rounded-lg border border-ink/10 bg-paper px-3 text-sm"
         />
@@ -929,7 +929,7 @@ function OfferLangFields({
         {t("admin.field.offerDesc_vi")}
         <textarea
           value={offer.description?.vi ?? ""}
-          onChange={(event) => onChange({ ...offer, description: { vi: "", en: "", zh: "", ja: "", ...offer.description, vi: event.target.value } })}
+          onChange={(event) => onChange({ ...offer, description: { en: "", zh: "", ja: "", ...offer.description, vi: event.target.value } })}
           onBlur={() => void translateField("description")}
           rows={2}
           className="mt-1 w-full rounded-lg border border-ink/10 bg-paper px-3 py-2 text-sm"
