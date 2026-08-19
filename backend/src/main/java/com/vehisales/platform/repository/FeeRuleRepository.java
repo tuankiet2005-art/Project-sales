@@ -19,4 +19,18 @@ public interface FeeRuleRepository extends JpaRepository<FeeRule, Long> {
               AND (r.effectiveTo IS NULL OR r.effectiveTo >= :onDate)
             """)
     List<FeeRule> findActiveOn(@Param("onDate") LocalDate onDate);
+
+    @EntityGraph(attributePaths = {"feeDefinition", "category", "location"})
+    @Query("SELECT r FROM FeeRule r ORDER BY r.id ASC")
+    List<FeeRule> findAllDetailedByOrderByIdAsc();
+
+    @EntityGraph(attributePaths = {"feeDefinition", "category", "location"})
+    @Query("SELECT r FROM FeeRule r WHERE r.id = :id")
+    java.util.Optional<FeeRule> findDetailedById(@Param("id") Long id);
+
+    boolean existsByFeeDefinition_Id(Long feeDefinitionId);
+
+    boolean existsByCategory_Id(Long categoryId);
+
+    boolean existsByLocation_Id(Long locationId);
 }

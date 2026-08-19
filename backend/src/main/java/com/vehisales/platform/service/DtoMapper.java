@@ -96,6 +96,7 @@ public class DtoMapper {
                 vehicle.getInspectionFee(),
                 vehicle.getDefaultColor(),
                 vehicle.getAvailableColors(),
+                vehicle.getColorPhotos(),
                 vehicle.getDeliveryNote(),
                 vehicle.getWarrantyNote(),
                 vehicle.getGifts(),

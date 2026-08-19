@@ -6,6 +6,7 @@ RUN mvn -q -DskipTests package
 
 FROM eclipse-temurin:17-jre
 WORKDIR /app
+ENV SPRING_PROFILES_ACTIVE=postgres
 COPY --from=build /app/target/vehicle-sales-backend-1.0.0.jar app.jar
 EXPOSE 8003
 ENTRYPOINT ["java", "-jar", "app.jar"]

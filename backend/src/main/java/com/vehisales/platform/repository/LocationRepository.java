@@ -11,4 +11,6 @@ public interface LocationRepository extends JpaRepository<Location, Long> {
     List<Location> findAllByOrderByNameAsc();
 
     Optional<Location> findByCode(String code);
+
+    Optional<Location> findByCodeIgnoreCase(String code);
 }

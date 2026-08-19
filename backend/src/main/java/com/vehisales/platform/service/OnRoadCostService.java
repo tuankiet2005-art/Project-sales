@@ -9,6 +9,7 @@ import com.vehisales.platform.domain.FeeRule;
 import com.vehisales.platform.domain.Location;
 import com.vehisales.platform.domain.Vehicle;
 import com.vehisales.platform.domain.VehicleCategory;
+import com.vehisales.platform.domain.enums.UsageType;
 import com.vehisales.platform.exception.ResourceNotFoundException;
 import com.vehisales.platform.repository.FeeDefinitionRepository;
 import com.vehisales.platform.repository.FeeRuleRepository;
@@ -38,6 +39,8 @@ public class OnRoadCostService {
     private final FeeRuleRepository feeRuleRepository;
     private final FeeRuleResolver ruleResolver;
     private final FeeAmountCalculator amountCalculator;
+    private final FeePolicy feePolicy;
+    private final DealerPolicy dealerPolicy;
     private final DtoMapper dtoMapper;
 
     public CalculateOnRoadCostResponse calculate(CalculateOnRoadCostRequest request) {
@@ -50,6 +53,19 @@ public class OnRoadCostService {
                 : categoryRepository.findById(request.categoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Vehicle category", request.categoryId()));
 
+        UsageType usage = UsageType.from(request.usageType());
+        DealerPolicy.QuotePricing pricing = dealerPolicy.price(
+                vehicle.getListPrice(),
+                usage,
+                request.selectedOfferIds(),
+                request.forgoneOfferIds(),
+                request.discountAmount()
+        );
+        BigDecimal salePrice = request.salePrice() != null ? request.salePrice() : pricing.salePrice();
+        BigDecimal discount = request.salePrice() != null
+                ? vehicle.getListPrice().subtract(request.salePrice()).max(BigDecimal.ZERO)
+                : pricing.discountAmount();
+
         List<FeeDefinition> definitions = feeDefinitionRepository.findByActiveTrueOrderBySortOrderAsc();
         List<FeeRule> activeRules = feeRuleRepository.findActiveOn(LocalDate.now());
 
@@ -60,14 +76,22 @@ public class OnRoadCostService {
         for (FeeDefinition definition : definitions) {
             var matched = ruleResolver.resolve(definition, vehicle, selectedCategory, location, activeRules);
             var override = overrideAmount(vehicle, definition.getCode(), request);
-            if (matched.isEmpty() && override.isEmpty()) {
+            if (matched.isEmpty() && override.isEmpty() && !feePolicy.appliesTo(definition.getCode())) {
                 continue;
             }
 
-            BigDecimal amount = override.orElseGet(() -> amountCalculator.calculate(matched.get(), vehicle));
-            String note = override.isPresent()
-                    ? "Entered on quote"
-                    : matched.map(amountCalculator::describe).orElse("Vehicle-specific amount");
+            BigDecimal amount;
+            String note;
+            if (override.isPresent()) {
+                amount = override.get();
+                note = "Entered on quote";
+            } else if (feePolicy.appliesTo(definition.getCode())) {
+                amount = feePolicy.amount(definition.getCode(), salePrice, usage, location);
+                note = feePolicy.describe(definition.getCode(), usage, location);
+            } else {
+                amount = amountCalculator.calculate(matched.get(), vehicle);
+                note = amountCalculator.describe(matched.get());
+            }
             boolean includeInTotal = definition.isMandatory()
                     || request.includeOptionalInsurance()
                     || ("OPTIONAL_BODY_INSURANCE".equals(definition.getCode())
@@ -91,15 +115,6 @@ public class OnRoadCostService {
                     note
             ));
         }
-
-        BigDecimal discount = request.discountAmount() != null
-                ? request.discountAmount()
-                : zeroIfNull(vehicle.getDiscountAmount());
-        BigDecimal salePrice = request.salePrice() != null
-                ? request.salePrice()
-                : request.discountAmount() != null
-                ? vehicle.getListPrice().subtract(discount)
-                : dtoMapper.salePrice(vehicle);
 
         List<AccessoryItem> accessories = sanitizeAccessories(request.accessories());
         BigDecimal accessoriesTotal = accessories.stream()
@@ -128,7 +143,10 @@ public class OnRoadCostService {
                 estimatedTotal,
                 deposit,
                 accessories,
-                CURRENCY
+                CURRENCY,
+                usage.name(),
+                pricing.discountPercent(),
+                pricing.appliedOfferIds()
         );
     }
 

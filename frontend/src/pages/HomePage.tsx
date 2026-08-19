@@ -81,7 +81,7 @@ export function HomePage() {
 
   return (
     <div className="min-h-screen">
-      <Header brandName={brand?.name} />
+      <Header />
       <main>
         <section className="mx-auto max-w-page px-5 pb-8 pt-12">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-copper">
@@ -90,7 +90,6 @@ export function HomePage() {
           <h1 className="mt-3 max-w-3xl font-display text-5xl leading-[1.05] text-ink sm:text-6xl">
             {t("heroTitle")}
           </h1>
-          <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink/70">{t("heroLead")}</p>
 
           <form onSubmit={applySearch} className="mt-8 flex flex-col gap-3 sm:flex-row">
             <input
@@ -146,7 +145,8 @@ export function HomePage() {
 
           {error && (
             <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-              {t("apiError")}
+              <p>{t("apiError")}</p>
+              <p className="mt-1 text-xs text-red-700/80">{error}</p>
             </div>
           )}
 
@@ -166,15 +166,14 @@ export function HomePage() {
         <section id="how-it-works" className="border-t border-ink/10 bg-white/70">
           <div className="mx-auto grid max-w-page gap-6 px-5 py-14 md:grid-cols-4">
             {[
-              ["01", "step1Title", "step1Copy"],
-              ["02", "step2Title", "step2Copy"],
-              ["03", "step3Title", "step3Copy"],
-              ["04", "step4Title", "step4Copy"],
-            ].map(([step, title, copy]) => (
+              ["01", "step1Title"],
+              ["02", "step2Title"],
+              ["03", "step3Title"],
+              ["04", "step4Title"],
+            ].map(([step, title]) => (
               <div key={step}>
                 <p className="text-xs font-semibold tracking-[0.2em] text-copper">{step}</p>
                 <h3 className="mt-2 font-display text-2xl">{t(title)}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-ink/65">{t(copy)}</p>
               </div>
             ))}
           </div>

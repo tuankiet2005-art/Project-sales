@@ -10,5 +10,9 @@ public interface FeeDefinitionRepository extends JpaRepository<FeeDefinition, Lo
 
     List<FeeDefinition> findByActiveTrueOrderBySortOrderAsc();
 
+    List<FeeDefinition> findAllByOrderBySortOrderAsc();
+
     Optional<FeeDefinition> findByCode(String code);
+
+    Optional<FeeDefinition> findByCodeIgnoreCase(String code);
 }

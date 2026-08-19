@@ -1,0 +1,53 @@
+# License-plate issuance by Vietnamese province/city.
+# Admin map: Nghị quyết 202/2025/QH15 — 34 tỉnh/thành from 01/07/2025.
+# Fee areas: Thông tư 71/2025/TT-BTC (ô tô chở người ≤ 9 chỗ, cấp lần đầu).
+# Edit amounts or move a `code` between areas, then restart the API.
+#
+# AREA_I  — Hà Nội, TP. Hồ Chí Minh (except provincial special zones such as Côn Đảo)
+# AREA_II — all other provinces/cities, plus special zones in Area I
+
+license-plate-regions:
+  default-area: AREA_II
+  areas:
+    AREA_I:
+      amount: 20000000
+    AREA_II:
+      amount: 200000
+  regions:
+    NORTH:
+      - { code: HN,  name: Hà Nội,       area: AREA_I }
+      - { code: HP,  name: Hải Phòng,    area: AREA_II }
+      - { code: BN,  name: Bắc Ninh,     area: AREA_II }
+      - { code: CB,  name: Cao Bằng,     area: AREA_II }
+      - { code: DB,  name: Điện Biên,    area: AREA_II }
+      - { code: HY,  name: Hưng Yên,     area: AREA_II }
+      - { code: LC,  name: Lai Châu,     area: AREA_II }
+      - { code: LS,  name: Lạng Sơn,     area: AREA_II }
+      - { code: LO,  name: Lào Cai,      area: AREA_II }
+      - { code: NB,  name: Ninh Bình,    area: AREA_II }
+      - { code: PT,  name: Phú Thọ,      area: AREA_II }
+      - { code: QN,  name: Quảng Ninh,   area: AREA_II }
+      - { code: SL,  name: Sơn La,       area: AREA_II }
+      - { code: TN,  name: Thái Nguyên,  area: AREA_II }
+      - { code: TQ,  name: Tuyên Quang,  area: AREA_II }
+    CENTRAL:
+      - { code: HUE, name: Huế,          area: AREA_II }
+      - { code: DN,  name: Đà Nẵng,      area: AREA_II }
+      - { code: HT,  name: Hà Tĩnh,      area: AREA_II }
+      - { code: KH,  name: Khánh Hòa,    area: AREA_II }
+      - { code: NA,  name: Nghệ An,      area: AREA_II }
+      - { code: QNG, name: Quảng Ngãi,   area: AREA_II }
+      - { code: QT,  name: Quảng Trị,    area: AREA_II }
+      - { code: TH,  name: Thanh Hóa,    area: AREA_II }
+      - { code: GL,  name: Gia Lai,      area: AREA_II }
+      - { code: DLK, name: Đắk Lắk,      area: AREA_II }
+      - { code: LD,  name: Lâm Đồng,     area: AREA_II }
+    SOUTH:
+      - { code: HCM, name: Thành phố Hồ Chí Minh, area: AREA_I }
+      - { code: CT,  name: Cần Thơ,      area: AREA_II }
+      - { code: AG,  name: An Giang,     area: AREA_II }
+      - { code: CM,  name: Cà Mau,       area: AREA_II }
+      - { code: DNI, name: Đồng Nai,     area: AREA_II }
+      - { code: DT,  name: Đồng Tháp,    area: AREA_II }
+      - { code: TNI, name: Tây Ninh,     area: AREA_II }
+      - { code: VL,  name: Vĩnh Long,    area: AREA_II }

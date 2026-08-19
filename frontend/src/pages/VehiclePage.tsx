@@ -1,13 +1,16 @@
+import { Briefcase, Gift, Percent, User } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { Header } from "../components/Header";
-import { QuoteAdjustments } from "../components/QuoteAdjustments";
 import { useI18n } from "../i18n/LanguageContext";
+import type { Lang } from "../i18n/translations";
 import { formatVnd } from "../lib/format";
-import { locationLabel } from "../lib/labels";
-import { extrasFromVehicle, saveExtras } from "../lib/quoteExtras";
-import type { Brand, Category, Location, QuoteExtras, VehicleDetail } from "../types";
+import { codedOption, locationLabel } from "../lib/labels";
+import { extrasFromVehicle, loadExtras, saveExtras } from "../lib/quoteExtras";
+import { colorPhoto } from "../lib/vehicleColor";
+import { defaultPolicyChoices, loadPolicyChoices, localizedPolicyText, savePolicyChoices } from "../lib/quotePolicy";
+import type { Brand, Category, DealerOffer, DealerPolicy, Location, QuoteExtras, UsageType, VehicleDetail } from "../types";
 
 export function VehiclePage() {
   const { vehicleId, brandCode = "" } = useParams();
@@ -25,6 +28,10 @@ export function VehiclePage() {
   const [customerName, setCustomerName] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [color, setColor] = useState("");
+  const [usageType, setUsageType] = useState<UsageType>("PRIVATE");
+  const [policy, setPolicy] = useState<DealerPolicy | null>(null);
+  const [selectedOfferIds, setSelectedOfferIds] = useState<string[]>([]);
+  const [forgoneOfferIds, setForgoneOfferIds] = useState<string[]>([]);
   const [extras, setExtras] = useState<QuoteExtras>({ accessories: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,15 +41,20 @@ export function VehiclePage() {
       return;
     }
     setLoading(true);
-    Promise.all([api.getVehicle(id), api.getCategories(), api.getLocations(), api.getBrand(brandCode)])
-      .then(([nextVehicle, nextCategories, nextLocations, nextBrand]) => {
+    const stored = loadPolicyChoices(id, defaultPolicyChoices());
+    setUsageType(stored.usageType);
+    setSelectedOfferIds(stored.selectedOfferIds);
+    setForgoneOfferIds(stored.forgoneOfferIds);
+    Promise.all([api.getVehicle(id), api.getCategories(), api.getLocations(), api.getBrand(brandCode), api.getDealerPolicy()])
+      .then(([nextVehicle, nextCategories, nextLocations, nextBrand, nextPolicy]) => {
         setVehicle(nextVehicle);
         setCategories(nextCategories);
         setLocations(nextLocations);
         setBrand(nextBrand);
+        setPolicy(nextPolicy);
         setCategoryId(nextVehicle.category.id);
         setColor(nextVehicle.defaultColor ?? "");
-        setExtras(extrasFromVehicle(nextVehicle));
+        setExtras(loadExtras(id, extrasFromVehicle(nextVehicle)));
         const hanoi = nextLocations.find((item) => item.code === "HN");
         setLocationId(hanoi?.id ?? nextLocations[0]?.id);
       })
@@ -72,14 +84,16 @@ export function VehiclePage() {
     if (color) {
       params.set("color", color);
     }
+    params.set("usage", usageType === "COMMERCIAL" ? "commercial" : "private");
     saveExtras(id, extras);
+    savePolicyChoices(id, { usageType, selectedOfferIds, forgoneOfferIds });
     navigate(`/brand/${brandCode}/vehicles/${id}/on-road?${params.toString()}`);
   }
 
   if (loading) {
     return (
       <div className="min-h-screen">
-        <Header brandName={brand?.name} />
+        <Header />
         <p className="mx-auto max-w-page px-5 py-16 text-ink/60">{t("loadingVehicle")}</p>
       </div>
     );
@@ -88,7 +102,7 @@ export function VehiclePage() {
   if (!vehicle) {
     return (
       <div className="min-h-screen">
-        <Header brandName={brand?.name} />
+        <Header />
         <div className="mx-auto max-w-page px-5 py-16">
           <p className="text-ink/70">{error ?? t("vehicleNotFound")}</p>
           <Link to={`/brand/${brandCode}`} className="mt-4 inline-block text-copper">
@@ -103,12 +117,13 @@ export function VehiclePage() {
 
   return (
     <div className="min-h-screen">
-      <Header brandName={brand?.name} />
+      <Header />
       <main className="mx-auto max-w-page px-5 py-10">
         <Link to={`/brand/${brandCode}`} className="text-sm text-ink/55 hover:text-ink">
           ← {t("backCatalog")}
         </Link>
 
+        <form onSubmit={goToQuote}>
         <div className="mt-6 grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
           <section>
             <div className="overflow-hidden rounded-3xl bg-mist shadow-card">
@@ -118,7 +133,7 @@ export function VehiclePage() {
               <p className="text-xs uppercase tracking-[0.18em] text-ink/45">{vehicle.brand}</p>
               <h1 className="mt-1 font-display text-4xl text-ink">{vehicle.name}</h1>
               <p className="mt-2 text-ink/60">
-                {vehicle.model} · {vehicle.year} · {vehicle.vehicleType}
+                {vehicle.model} · {vehicle.year} · {codedOption(vehicle.vehicleType, t)}
               </p>
               <div className="mt-5 rounded-2xl bg-white px-5 py-4 shadow-card">
                 <p className="text-xs uppercase tracking-[0.16em] text-ink/45">{t("listPrice")}</p>
@@ -135,9 +150,9 @@ export function VehiclePage() {
             <dl className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
               <Spec label={t("specCategory")} value={t(`category.${vehicle.category.code}`)} />
               <Spec label={t("specSeats")} value={vehicle.seats ? String(vehicle.seats) : "—"} />
-              <Spec label={t("specEngine")} value={vehicle.engineCc ? `${vehicle.engineCc} cc` : vehicle.fuelType} />
-              <Spec label={t("specFuel")} value={vehicle.fuelType} />
-              <Spec label={t("specTransmission")} value={vehicle.transmission} />
+              <Spec label={t("specEngine")} value={vehicle.engineCc ? `${vehicle.engineCc} cc` : codedOption(vehicle.fuelType, t)} />
+              <Spec label={t("specFuel")} value={codedOption(vehicle.fuelType, t)} />
+              <Spec label={t("specTransmission")} value={codedOption(vehicle.transmission, t)} />
               <Spec label={t("specYear")} value={String(vehicle.year)} />
               {specEntries.map(([key, value]) => (
                 <Spec key={key} label={key} value={value} />
@@ -146,9 +161,33 @@ export function VehiclePage() {
           </section>
 
           <aside className="space-y-5">
-            <form onSubmit={goToQuote} className="rounded-3xl border border-ink/8 bg-white p-6 shadow-card">
+            <div className="rounded-3xl border border-ink/8 bg-white p-6 shadow-card">
               <p className="text-xs uppercase tracking-[0.18em] text-copper">{t("calculateTitle")}</p>
               <h2 className="mt-2 font-display text-2xl">{t("confirmDetails")}</h2>
+
+              <p className="mt-5 text-sm font-medium">{t("usageType")}</p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setUsageType("PRIVATE")}
+                  className={`rounded-xl border px-3 py-2 text-left text-sm ${
+                    usageType === "PRIVATE" ? "border-ink bg-mist" : "border-ink/10 bg-paper"
+                  }`}
+                >
+                  <User className="mb-1 h-4 w-4 text-copper" />
+                  <span className="block font-semibold">{t("usagePrivate")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUsageType("COMMERCIAL")}
+                  className={`rounded-xl border px-3 py-2 text-left text-sm ${
+                    usageType === "COMMERCIAL" ? "border-ink bg-mist" : "border-ink/10 bg-paper"
+                  }`}
+                >
+                  <Briefcase className="mb-1 h-4 w-4 text-copper" />
+                  <span className="block font-semibold">{t("usageCommercial")}</span>
+                </button>
+              </div>
 
               <label className="mt-5 block text-sm font-medium">{t("vehicleCategory")}</label>
               <select
@@ -181,21 +220,28 @@ export function VehiclePage() {
               />
 
               <label className="mt-5 block text-sm font-medium">{t("vehicleColor")}</label>
-              <select
-                value={color}
-                onChange={(event) => setColor(event.target.value)}
-                className="mt-1 h-12 w-full rounded-xl border border-ink/10 bg-paper px-3"
-              >
-                {(vehicle.availableColors ?? vehicle.defaultColor ?? "Trắng")
-                  .split(",")
-                  .map((item) => item.trim())
-                  .filter(Boolean)
-                  .map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-              </select>
+              <div className="mt-2 flex items-center gap-3">
+                <img
+                  src={colorPhoto(color, vehicle.colorPhotos)}
+                  alt={color}
+                  className="h-14 w-auto rounded-lg border border-ink/10 bg-paper object-contain"
+                />
+                <select
+                  value={color}
+                  onChange={(event) => setColor(event.target.value)}
+                  className="h-12 flex-1 rounded-xl border border-ink/10 bg-paper px-3 text-ink"
+                >
+                  {(vehicle.availableColors ?? vehicle.defaultColor ?? "Trắng")
+                    .split(",")
+                    .map((item) => item.trim())
+                    .filter(Boolean)
+                    .map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                </select>
+              </div>
 
               <label className="mt-5 block text-sm font-medium">{t("provinceCity")}</label>
               <select
@@ -210,6 +256,41 @@ export function VehiclePage() {
                 ))}
               </select>
 
+              <p className="mt-5 text-sm font-medium">{t("dealerPolicyTitle")}</p>
+              {policy && (
+                <p className="mt-2 text-xs font-medium text-ink/70">
+                  {t("usageDiscount")}:{" "}
+                  {usageType === "COMMERCIAL" ? policy.commercialDiscountPercent : policy.privateDiscountPercent}%
+                </p>
+              )}
+              <div className="mt-3 space-y-2">
+                {(policy?.offers ?? []).map((offer) => (
+                  <OfferCard
+                    key={offer.id}
+                    offer={offer}
+                    selected={selectedOfferIds.includes(offer.id)}
+                    forgone={forgoneOfferIds.includes(offer.id)}
+                    onTake={() => {
+                      setForgoneOfferIds((current) => current.filter((item) => item !== offer.id));
+                      setSelectedOfferIds((current) => current.filter((item) => item !== offer.id));
+                    }}
+                    onForgo={() => {
+                      setSelectedOfferIds((current) => current.filter((item) => item !== offer.id));
+                      setForgoneOfferIds((current) => [...current.filter((item) => item !== offer.id), offer.id]);
+                    }}
+                    onToggle={(checked) => {
+                      setSelectedOfferIds((current) =>
+                        checked
+                          ? [...current.filter((item) => item !== offer.id), offer.id]
+                          : current.filter((item) => item !== offer.id)
+                      );
+                    }}
+                    t={t}
+                    lang={lang}
+                  />
+                ))}
+              </div>
+
               <label className="mt-5 flex items-start gap-3 rounded-2xl bg-paper px-4 py-3 text-sm">
                 <input
                   type="checkbox"
@@ -223,22 +304,19 @@ export function VehiclePage() {
                 </span>
               </label>
 
-              <div className="mt-6 border-t border-ink/8 pt-5">
-                <QuoteAdjustments extras={extras} onChange={setExtras} />
-              </div>
-
               {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
-
-              <button
-                type="submit"
-                disabled={!locationId}
-                className="mt-5 h-12 w-full rounded-xl bg-ink text-sm font-semibold text-paper hover:bg-forest disabled:opacity-60"
-              >
-                {t("calculateButton")}
-              </button>
-            </form>
+            </div>
           </aside>
         </div>
+
+        <button
+          type="submit"
+          disabled={!locationId}
+          className="mt-5 h-12 w-full rounded-xl bg-ink text-sm font-semibold text-paper hover:bg-forest disabled:opacity-60"
+        >
+          {t("calculateButton")}
+        </button>
+        </form>
       </main>
     </div>
   );
@@ -250,5 +328,62 @@ function Spec({ label, value }: { label: string; value: string }) {
       <dt className="text-xs uppercase tracking-[0.14em] text-ink/45">{label}</dt>
       <dd className="mt-1 text-sm font-medium">{value}</dd>
     </div>
+  );
+}
+
+function OfferCard({
+  offer,
+  selected,
+  forgone,
+  onTake,
+  onForgo,
+  onToggle,
+  t,
+  lang,
+}: {
+  offer: DealerOffer;
+  selected: boolean;
+  forgone: boolean;
+  onTake: () => void;
+  onForgo: () => void;
+  onToggle: (checked: boolean) => void;
+  t: (key: string) => string;
+  lang: Lang;
+}) {
+  const title = localizedPolicyText(offer.title, lang);
+  const description = localizedPolicyText(offer.description, lang);
+  if (offer.kind === "FORGO_FOR_CREDIT") {
+    return (
+      <div className="rounded-xl border border-ink/10 bg-paper px-3 py-2">
+        <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
+          <Gift className="h-3.5 w-3.5 text-copper" />
+          {title}
+        </p>
+        <p className="mt-1 text-[11px] text-ink/55">{description}</p>
+        <div className="mt-2 grid gap-1.5">
+          <label className="text-sm">
+            <input type="radio" className="mr-2" checked={!forgone} onChange={onTake} />
+            {t("offerTakeGift")}
+          </label>
+          <label className="text-sm">
+            <input type="radio" className="mr-2" checked={forgone} onChange={onForgo} />
+            {t("offerForgoGift")}
+            {offer.amount ? ` · ${formatVnd(offer.amount)}` : ""}
+          </label>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <label className="flex items-start gap-2 rounded-xl border border-ink/10 bg-paper px-3 py-2">
+      <input type="checkbox" className="mt-1" checked={selected} onChange={(event) => onToggle(event.target.checked)} />
+      <span>
+        <span className="inline-flex items-center gap-1.5 text-sm font-semibold">
+          <Percent className="h-3.5 w-3.5 text-copper" />
+          {title}
+        </span>
+        <span className="mt-1 block text-[11px] text-ink/55">{description}</span>
+      </span>
+    </label>
   );
 }

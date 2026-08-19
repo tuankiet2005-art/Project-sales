@@ -1,36 +1,49 @@
 import { Link, NavLink, useParams } from "react-router-dom";
+import { useAdminAuth } from "../auth/AdminAuthContext";
 import { useI18n } from "../i18n/LanguageContext";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
-export function Header({ brandName }: { brandName?: string }) {
+export function Header() {
   const { t } = useI18n();
+  const { signedIn, signOut } = useAdminAuth();
   const { brandCode } = useParams();
+  const catalogCode = brandCode || "MITSUBISHI";
 
   return (
-    <header className="sticky top-0 z-20 border-b border-ink/10 bg-paper/85 backdrop-blur">
-      <div className="mx-auto flex max-w-page items-center justify-between gap-4 px-5 py-4">
-        <Link to={brandCode ? `/brand/${brandCode}` : "/"} className="flex items-baseline gap-2">
-          <span className="font-display text-2xl font-semibold tracking-tight text-ink">{t("appName")}</span>
-          <span className="hidden text-sm text-ink/55 sm:inline">
-            {brandName ?? t("appTag")}
-          </span>
-        </Link>
-        <div className="flex items-center gap-4 text-sm font-medium">
-          {brandCode && (
+    <header className="sticky top-0 z-50 border-b border-ink/10 bg-paper/85 backdrop-blur">
+      <div className="mx-auto flex max-w-page flex-wrap items-center justify-between gap-x-8 gap-y-3 px-6 py-5">
+        {signedIn ? (
+          <Link to={`/brand/${catalogCode}`} className="font-display text-3xl font-semibold tracking-tight text-ink">
+            {t("appName")}
+          </Link>
+        ) : (
+          <span className="font-display text-3xl font-semibold tracking-tight text-ink">{t("appName")}</span>
+        )}
+        <nav className="flex flex-wrap items-center gap-x-7 gap-y-2 text-base font-semibold">
+          {signedIn && (
             <>
               <NavLink
-                to={`/brand/${brandCode}`}
-                className={({ isActive }) => (isActive ? "text-copper" : "text-ink/70 hover:text-ink")}
+                to={`/brand/${catalogCode}`}
+                className={({ isActive }) => (isActive ? "px-1 py-1 text-copper" : "px-1 py-1 text-ink/70 hover:text-ink")}
               >
                 {t("browse")}
               </NavLink>
-              <Link to="/" className="text-ink/70 hover:text-ink">
+              <NavLink to="/" className={({ isActive }) => (isActive ? "px-1 py-1 text-copper" : "px-1 py-1 text-ink/70 hover:text-ink")}>
                 {t("changeBrand")}
-              </Link>
+              </NavLink>
+              <NavLink to="/quotes" className={({ isActive }) => (isActive ? "px-1 py-1 text-copper" : "px-1 py-1 text-ink/70 hover:text-ink")}>
+                {t("quoteHistory.nav")}
+              </NavLink>
+              <NavLink to="/admin" className={({ isActive }) => (isActive ? "px-1 py-1 text-copper" : "px-1 py-1 text-ink/70 hover:text-ink")}>
+                {t("admin.nav")}
+              </NavLink>
+              <button type="button" onClick={signOut} className="px-1 py-1 text-ink/70 hover:text-ink">
+                {t("login.logout")}
+              </button>
             </>
           )}
           <LanguageSwitcher />
-        </div>
+        </nav>
       </div>
     </header>
   );

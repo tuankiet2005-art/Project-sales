@@ -93,6 +93,11 @@ public class Vehicle {
     @Column(length = 240)
     private String availableColors;
 
+    @Convert(converter = StringMapConverter.class)
+    @Column(name = "color_photos", columnDefinition = "TEXT")
+    @Builder.Default
+    private Map<String, String> colorPhotos = new LinkedHashMap<>();
+
     @Column(length = 120)
     private String deliveryNote;
 
