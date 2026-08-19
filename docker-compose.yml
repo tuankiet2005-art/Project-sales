@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: vehisales
+      POSTGRES_USER: vehisales
+      POSTGRES_PASSWORD: vehisales
+    ports:
+      - "5432:5432"
+    volumes:
+      - vehisales_pg:/var/lib/postgresql/data
+
+volumes:
+  vehisales_pg:

@@ -1,0 +1,263 @@
+package com.vehisales.platform.service;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+final class QuoteLabels {
+
+    private static final Map<String, Map<String, String>> DICTS = Map.of(
+            "en", english(),
+            "zh", chinese(),
+            "ja", japanese()
+    );
+
+    private QuoteLabels() {
+    }
+
+    static String normalize(String language) {
+        if (language == null || language.isBlank()) {
+            return "vi";
+        }
+        String code = language.trim().toLowerCase(Locale.ROOT);
+        if (code.startsWith("zh")) {
+            return "zh";
+        }
+        if (code.startsWith("ja")) {
+            return "ja";
+        }
+        if (code.startsWith("en")) {
+            return "en";
+        }
+        return "vi";
+    }
+
+    static boolean isVietnamese(String language) {
+        return "vi".equals(normalize(language));
+    }
+
+    static String translate(String text, String language) {
+        if (text == null || text.isBlank() || isVietnamese(language)) {
+            return text;
+        }
+        Map<String, String> dict = DICTS.get(normalize(language));
+        if (dict == null) {
+            return text;
+        }
+        String compact = text.replace('\n', ' ').replaceAll("\\s+", " ").trim();
+        if (compact.contains("Quý khách đặt cọc")) {
+            return dict.getOrDefault(
+                    "Quý khách đặt cọc và ký hợp đồng chúng tôi sẽ tiến hành thẩm định và làm hồ sơ ngân hàng, trường hợp ngân hàng không đồng ý cho vay, chúng tôi sẽ hoàn lại 100% tiền cọc",
+                    text);
+        }
+        String result = text;
+        for (Map.Entry<String, String> entry : dict.entrySet()) {
+            if (result.contains(entry.getKey())) {
+                result = result.replace(entry.getKey(), entry.getValue());
+            }
+        }
+        return result;
+    }
+
+    private static Map<String, String> english() {
+        return ordered(
+                "* Chính sách bảo hành: 3 năm/100.000km tùy theo điều kiện nào đến trước",
+                "* Warranty: 3 years/100,000 km, whichever comes first",
+                "Quý khách đặt cọc và ký hợp đồng chúng tôi sẽ tiến hành thẩm định và làm hồ sơ ngân hàng, trường hợp ngân hàng không đồng ý cho vay, chúng tôi sẽ hoàn lại 100% tiền cọc",
+                "After deposit and contract signing we will process the bank application. If the bank declines the loan, the deposit is refunded in full.",
+                "Bảo hiểm TNDS + Người ngồi xe (1 năm)", "Compulsory liability + passenger insurance (1 year)",
+                "Bảo hiểm TNDS + Người ngồi trên xe (1 năm)", "Compulsory liability + passenger insurance (1 year)",
+                "Bảo hiểm vật chất thân vỏ xe", "Optional body insurance",
+                "Bảo hiểm thân vỏ xe (10tr)", "Body insurance (VND 10 million)",
+                "Phí sử dụng đường bộ (1 năm)", "Road use fee (1 year)",
+                "Thuế trước bạ (tạm tính)", "Registration tax (estimate)",
+                "Phí dịch vụ đăng ký xe", "Registration service fee",
+                "Tổng Chi Phí Đăng ký xe", "Total registration cost",
+                "Hiệu lực báo giá áp dụng trong tháng", "Quote valid within this month",
+                "Chi Phí Phát sinh thêm (Nếu có)", "Extra costs (if any)",
+                "Phụ kiện trang bị thêm (Nếu có)", "Extra accessories (if any)",
+                "CHI PHÍ PHÁT SINH THÊM", "ADDITIONAL COSTS",
+                "PHƯƠNG ÁN: MUA VAY NGÂN HÀNG", "OPTION: BANK LOAN",
+                "PHƯƠNG ÁN: MUA TIỀN MẶT", "OPTION: CASH PURCHASE",
+                "PHƯƠNG ÁN TRẢ HÀNG THÁNG", "MONTHLY PAYMENT PLAN",
+                "BẢNG BÁO GIÁ CHI TIẾT", "DETAILED QUOTATION",
+                "XÁC NHẬN KHÁCH HÀNG", "CUSTOMER CONFIRMATION",
+                "XÁC NHẬN TVBH", "SALES CONFIRMATION",
+                "THANH TOÁN LẦN 2", "SECOND PAYMENT",
+                "TỔNG LĂNG BÁNH", "ON-ROAD TOTAL",
+                "TỔNG LĂN BÁNH", "ON-ROAD TOTAL",
+                "TỔNG CP PHÁT SINH", "TOTAL EXTRA COST",
+                "Tạm tính chi phí", "Estimated registration costs",
+                "Lệ phí đăng kiểm", "Inspection fee",
+                "Phí bấm biển số", "License plate fee",
+                "Biển số mica", "Mica plate",
+                "Hộp đen (nếu có)", "Dashcam (if any)",
+                "Thời gian vay:", "Loan term:",
+                "Tiền gốc tháng:", "Monthly principal:",
+                "Thanh toán tháng", "Monthly payment",
+                "Số tiền vay", "Loan amount",
+                "CÁC MÀU XE", "AVAILABLE COLORS",
+                "Khách hàng:", "Customer:",
+                "Địa chỉ:", "Address:",
+                "Loại xe:", "Vehicle:",
+                "Đời xe:", "Model year:",
+                "Giá niêm yết:", "List price:",
+                "Giảm giá:", "Discount:",
+                "Giá Bán:", "Selling price:",
+                "TG giao xe:", "Delivery:",
+                "Tiền cọc:", "Deposit:",
+                "Tiền cọc", "Deposit",
+                "Màu xe", "Color",
+                "Ngày:", "Date:",
+                "Quà Tặng", "Gifts",
+                "ĐVT: VNĐ", "Unit: VND",
+                "Thuế 10%", "Tax 10%",
+                "TVBH:", "Sales:",
+                "SĐT:", "Tel:",
+                "Tặng", "Gift",
+                "TẶNG", "GIFT",
+                " Năm", " years"
+        );
+    }
+
+    private static Map<String, String> chinese() {
+        return ordered(
+                "* Chính sách bảo hành: 3 năm/100.000km tùy theo điều kiện nào đến trước",
+                "* 保修政策：3年/100,000公里，以先到者为准",
+                "Quý khách đặt cọc và ký hợp đồng chúng tôi sẽ tiến hành thẩm định và làm hồ sơ ngân hàng, trường hợp ngân hàng không đồng ý cho vay, chúng tôi sẽ hoàn lại 100% tiền cọc",
+                "客户支付定金并签署合同后，我们将办理银行贷款。如银行拒绝放贷，定金将全额退还。",
+                "Bảo hiểm TNDS + Người ngồi xe (1 năm)", "交强险 + 乘客险（1年）",
+                "Bảo hiểm TNDS + Người ngồi trên xe (1 năm)", "交强险 + 乘客险（1年）",
+                "Bảo hiểm vật chất thân vỏ xe", "车损保险（可选）",
+                "Bảo hiểm thân vỏ xe (10tr)", "车损保险（1,000万越盾）",
+                "Phí sử dụng đường bộ (1 năm)", "道路使用费（1年）",
+                "Thuế trước bạ (tạm tính)", "注册税（暂估）",
+                "Phí dịch vụ đăng ký xe", "代办注册服务费",
+                "Tổng Chi Phí Đăng ký xe", "注册费用合计",
+                "Hiệu lực báo giá áp dụng trong tháng", "本报价当月有效",
+                "Chi Phí Phát sinh thêm (Nếu có)", "额外费用（如有）",
+                "Phụ kiện trang bị thêm (Nếu có)", "额外配件（如有）",
+                "CHI PHÍ PHÁT SINH THÊM", "额外费用",
+                "PHƯƠNG ÁN: MUA VAY NGÂN HÀNG", "方案：银行贷款",
+                "PHƯƠNG ÁN: MUA TIỀN MẶT", "方案：全款购买",
+                "PHƯƠNG ÁN TRẢ HÀNG THÁNG", "月供方案",
+                "BẢNG BÁO GIÁ CHI TIẾT", "详细报价单",
+                "XÁC NHẬN KHÁCH HÀNG", "客户确认",
+                "XÁC NHẬN TVBH", "销售确认",
+                "THANH TOÁN LẦN 2", "第二次付款",
+                "TỔNG LĂNG BÁNH", "落地总价",
+                "TỔNG LĂN BÁNH", "落地总价",
+                "TỔNG CP PHÁT SINH", "额外费用合计",
+                "Tạm tính chi phí", "预估注册费用",
+                "Lệ phí đăng kiểm", "年检费",
+                "Phí bấm biển số", "牌照费",
+                "Biển số mica", "亚克力车牌",
+                "Hộp đen (nếu có)", "行车记录仪（如有）",
+                "Thời gian vay:", "贷款期限：",
+                "Tiền gốc tháng:", "每月本金：",
+                "Thanh toán tháng", "每月还款",
+                "Số tiền vay", "贷款金额",
+                "CÁC MÀU XE", "可选颜色",
+                "Khách hàng:", "客户：",
+                "Địa chỉ:", "地址：",
+                "Loại xe:", "车型：",
+                "Đời xe:", "年款：",
+                "Giá niêm yết:", "标价：",
+                "Giảm giá:", "优惠：",
+                "Giá Bán:", "成交价：",
+                "TG giao xe:", "交车时间：",
+                "Tiền cọc:", "定金：",
+                "Tiền cọc", "定金",
+                "Màu xe", "颜色",
+                "Ngày:", "日期：",
+                "Quà Tặng", "赠品",
+                "ĐVT: VNĐ", "单位：越南盾",
+                "Thuế 10%", "税 10%",
+                "TVBH:", "销售：",
+                "SĐT:", "电话：",
+                "Tặng", "赠送",
+                "TẶNG", "赠送",
+                " Năm", " 年"
+        );
+    }
+
+    private static Map<String, String> japanese() {
+        return ordered(
+                "* Chính sách bảo hành: 3 năm/100.000km tùy theo điều kiện nào đến trước",
+                "* 保証：3年/100,000km（いずれか早い方）",
+                "Quý khách đặt cọc và ký hợp đồng chúng tôi sẽ tiến hành thẩm định và làm hồ sơ ngân hàng, trường hợp ngân hàng không đồng ý cho vay, chúng tôi sẽ hoàn lại 100% tiền cọc",
+                "ご契約・ご入金後、銀行審査を進めます。融資が否認された場合、手付金は全額ご返金します。",
+                "Bảo hiểm TNDS + Người ngồi xe (1 năm)", "強制対人賠償＋搭乗者保険（1年）",
+                "Bảo hiểm TNDS + Người ngồi trên xe (1 năm)", "強制対人賠償＋搭乗者保険（1年）",
+                "Bảo hiểm vật chất thân vỏ xe", "任意車両保険",
+                "Bảo hiểm thân vỏ xe (10tr)", "車両保険（1,000万VND）",
+                "Phí sử dụng đường bộ (1 năm)", "道路使用料（1年）",
+                "Thuế trước bạ (tạm tính)", "登録税（概算）",
+                "Phí dịch vụ đăng ký xe", "登録代行手数料",
+                "Tổng Chi Phí Đăng ký xe", "登録費用合計",
+                "Hiệu lực báo giá áp dụng trong tháng", "本見積の有効期限は当月中",
+                "Chi Phí Phát sinh thêm (Nếu có)", "追加費用（ある場合）",
+                "Phụ kiện trang bị thêm (Nếu có)", "追加装備（ある場合）",
+                "CHI PHÍ PHÁT SINH THÊM", "追加費用",
+                "PHƯƠNG ÁN: MUA VAY NGÂN HÀNG", "プラン：銀行ローン",
+                "PHƯƠNG ÁN: MUA TIỀN MẶT", "プラン：現金購入",
+                "PHƯƠNG ÁN TRẢ HÀNG THÁNG", "月々支払いプラン",
+                "BẢNG BÁO GIÁ CHI TIẾT", "詳細見積書",
+                "XÁC NHẬN KHÁCH HÀNG", "お客様確認",
+                "XÁC NHẬN TVBH", "販売担当確認",
+                "THANH TOÁN LẦN 2", "2回目のお支払い",
+                "TỔNG LĂNG BÁNH", "登録後総額",
+                "TỔNG LĂN BÁNH", "登録後総額",
+                "TỔNG CP PHÁT SINH", "追加費用合計",
+                "Tạm tính chi phí", "登録費用（概算）",
+                "Lệ phí đăng kiểm", "車検費用",
+                "Phí bấm biển số", "ナンバー交付手数料",
+                "Biển số mica", "マイカプレート",
+                "Hộp đen (nếu có)", "ドライブレコーダー（ある場合）",
+                "Thời gian vay:", "ローン期間：",
+                "Tiền gốc tháng:", "月々元金：",
+                "Thanh toán tháng", "月々支払い",
+                "Số tiền vay", "借入額",
+                "CÁC MÀU XE", "ボディカラー",
+                "Khách hàng:", "お客様：",
+                "Địa chỉ:", "住所：",
+                "Loại xe:", "車種：",
+                "Đời xe:", "年式：",
+                "Giá niêm yết:", "車両本体価格：",
+                "Giảm giá:", "値引き：",
+                "Giá Bán:", "販売価格：",
+                "TG giao xe:", "納車：",
+                "Tiền cọc:", "手付金：",
+                "Tiền cọc", "手付金",
+                "Màu xe", "カラー",
+                "Ngày:", "日付：",
+                "Quà Tặng", "特典",
+                "ĐVT: VNĐ", "単位：VND",
+                "Thuế 10%", "税 10%",
+                "TVBH:", "担当：",
+                "SĐT:", "電話：",
+                "Tặng", "贈呈",
+                "TẶNG", "贈呈",
+                " Năm", " 年"
+        );
+    }
+
+    private static Map<String, String> ordered(String... pairs) {
+        if (pairs.length % 2 != 0) {
+            throw new IllegalArgumentException("Translation pairs must be even");
+        }
+        List<String[]> entries = new ArrayList<>();
+        for (int i = 0; i < pairs.length; i += 2) {
+            entries.add(new String[]{pairs[i], pairs[i + 1]});
+        }
+        entries.sort(Comparator.comparingInt((String[] item) -> item[0].length()).reversed());
+        Map<String, String> map = new LinkedHashMap<>();
+        for (String[] entry : entries) {
+            map.put(entry[0], entry[1]);
+        }
+        return map;
+    }
+}
