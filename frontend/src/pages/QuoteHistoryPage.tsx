@@ -5,6 +5,7 @@ import { api } from "../api/client";
 import { Header } from "../components/Header";
 import { useI18n } from "../i18n/LanguageContext";
 import { formatVnd } from "../lib/format";
+import { softIncludes } from "../lib/softSearch";
 import { saveExtras } from "../lib/quoteExtras";
 import { savePolicyChoices } from "../lib/quotePolicy";
 import type { QuoteExtras, QuoteHistory } from "../types";
@@ -153,21 +154,7 @@ interface StoredQuotePayload {
 }
 
 function matchesHistoryQuery(row: QuoteHistory, query: string) {
-  const needle = foldVietnamese(query);
-  if (!needle) {
-    return true;
-  }
-  return [row.customerName, row.customerAddress, row.vehicleName, row.locationName]
-    .filter(Boolean)
-    .some((value) => foldVietnamese(String(value)).includes(needle));
-}
-
-function foldVietnamese(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/gi, "d")
-    .toLowerCase();
+  return softIncludes(query, row.customerName, row.customerAddress, row.vehicleName, row.locationName);
 }
 
 function extrasFromPayload(payload?: string): QuoteExtras {

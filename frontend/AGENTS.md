@@ -37,6 +37,7 @@ SPA fallback: `vercel.json` rewrites non-`/api` paths to `index.html`.
 - Admin Vietnamese fields call `POST /api/admin/translate` (`lib/fromVietnamese.ts`) to fill empty `en` / `zh` / `ja`
 - Operator login: `POST /api/auth/login`; token in `localStorage` key `onroad-admin-token`; every page requires sign-in; `/api/admin/**` calls send `Authorization: Bearer`
 - Quote extras persist in `sessionStorage` key `onroad-extras-{vehicleId}` (`lib/quoteExtras.ts`)
+- Soft search (`lib/softSearch.ts`) folds Vietnamese accents so `Nguyen` / `Ha Noi` match `Nguyễn` / `Hà Nội`; used on cars, provinces, Data tables, and History
 - Excel: `POST /api/export-quote` also writes `quote_history`. PDF: browser capture of `#quote-sheet` (`lib/exportQuotePdf.ts`) then `POST /api/quotes`. Search old quotes at `/quotes`.
 
 ### Routes
