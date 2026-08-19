@@ -1,6 +1,7 @@
 package com.vehisales.platform.config;
 
 import com.vehisales.platform.domain.Brand;
+import com.vehisales.platform.domain.Dealer;
 import com.vehisales.platform.domain.FeeDefinition;
 import com.vehisales.platform.domain.FeeRule;
 import com.vehisales.platform.domain.Location;
@@ -10,6 +11,7 @@ import com.vehisales.platform.domain.enums.FeeCalculationType;
 import com.vehisales.platform.domain.enums.FeeZone;
 import com.vehisales.platform.domain.enums.Region;
 import com.vehisales.platform.repository.BrandRepository;
+import com.vehisales.platform.repository.DealerRepository;
 import com.vehisales.platform.repository.FeeDefinitionRepository;
 import com.vehisales.platform.repository.FeeRuleRepository;
 import com.vehisales.platform.repository.LocationRepository;
@@ -35,6 +37,7 @@ public class DataSeeder implements CommandLineRunner {
     private final BrandRepository brandRepository;
     private final VehicleCategoryRepository categoryRepository;
     private final LocationRepository locationRepository;
+    private final DealerRepository dealerRepository;
     private final VehicleRepository vehicleRepository;
     private final FeeDefinitionRepository feeDefinitionRepository;
     private final FeeRuleRepository feeRuleRepository;
@@ -45,6 +48,7 @@ public class DataSeeder implements CommandLineRunner {
         feeRuleRepository.deleteAll();
         vehicleRepository.deleteAll();
         feeDefinitionRepository.deleteAll();
+        dealerRepository.deleteAll();
         categoryRepository.deleteAll();
         locationRepository.deleteAll();
         brandRepository.deleteAll();
@@ -52,6 +56,7 @@ public class DataSeeder implements CommandLineRunner {
         Map<String, Brand> brands = seedBrands();
         Map<String, VehicleCategory> categories = seedCategories();
         seedLocations();
+        seedDealer(brands.get("MITSUBISHI"));
         Map<String, FeeDefinition> fees = seedFeeDefinitions();
         seedFeeRules(categories, fees);
         seedMitsubishiVietnam(brands.get("MITSUBISHI"), categories);
@@ -71,6 +76,16 @@ public class DataSeeder implements CommandLineRunner {
         Map<String, Brand> map = new LinkedHashMap<>();
         created.forEach(item -> map.put(item.getCode(), item));
         return map;
+    }
+
+    private void seedDealer(Brand brand) {
+        dealerRepository.save(Dealer.builder()
+                .brand(brand)
+                .name("MITSUBISHI MOVEO NEW CITY - THÀNH PHỐ MỚI BÌNH DƯƠNG")
+                .address("1C, Đường Hùng Vương, Thành phố mới Bình Dương")
+                .market("Vietnam")
+                .active(true)
+                .build());
     }
 
     private Map<String, VehicleCategory> seedCategories() {
@@ -146,32 +161,11 @@ public class DataSeeder implements CommandLineRunner {
     private void seedFeeRules(Map<String, VehicleCategory> categories, Map<String, FeeDefinition> fees) {
         LocalDate from = LocalDate.of(2026, 1, 1);
         for (String car : List.of("PASSENGER_CAR_4", "PASSENGER_CAR_7", "PICKUP", "TRUCK", "VAN")) {
-            plate(fees, categories, car, FeeZone.SPECIAL, 20_000_000, from);
-            plate(fees, categories, car, FeeZone.MAJOR, 1_000_000, from);
-            plate(fees, categories, car, FeeZone.STANDARD, 200_000, from);
             fixed(fees, categories, "REGISTRATION_FEE", car, 150_000, from);
         }
-        plate(fees, categories, "MOTORCYCLE", FeeZone.SPECIAL, 4_000_000, from);
-        plate(fees, categories, "MOTORCYCLE", FeeZone.MAJOR, 1_000_000, from);
-        plate(fees, categories, "MOTORCYCLE", FeeZone.STANDARD, 150_000, from);
-        plate(fees, categories, "OTHER", FeeZone.SPECIAL, 4_000_000, from);
-        plate(fees, categories, "OTHER", FeeZone.MAJOR, 500_000, from);
-        plate(fees, categories, "OTHER", FeeZone.STANDARD, 150_000, from);
         fixed(fees, categories, "REGISTRATION_FEE", "MOTORCYCLE", 50_000, from);
         fixed(fees, categories, "REGISTRATION_FEE", "BICYCLE", 0, from);
         fixed(fees, categories, "REGISTRATION_FEE", "OTHER", 50_000, from);
-
-        percentZone(fees, categories, "REGISTRATION_TAX", "PASSENGER_CAR_4", FeeZone.SPECIAL, "12", from);
-        percentZone(fees, categories, "REGISTRATION_TAX", "PASSENGER_CAR_4", FeeZone.MAJOR, "10", from);
-        percentZone(fees, categories, "REGISTRATION_TAX", "PASSENGER_CAR_4", FeeZone.STANDARD, "10", from);
-        percentZone(fees, categories, "REGISTRATION_TAX", "PASSENGER_CAR_7", FeeZone.SPECIAL, "12", from);
-        percentZone(fees, categories, "REGISTRATION_TAX", "PASSENGER_CAR_7", FeeZone.MAJOR, "10", from);
-        percentZone(fees, categories, "REGISTRATION_TAX", "PASSENGER_CAR_7", FeeZone.STANDARD, "10", from);
-        percent(fees, categories, "REGISTRATION_TAX", "MOTORCYCLE", "2", from);
-        percent(fees, categories, "REGISTRATION_TAX", "PICKUP", "2", from);
-        percent(fees, categories, "REGISTRATION_TAX", "TRUCK", "2", from);
-        percent(fees, categories, "REGISTRATION_TAX", "VAN", "10", from);
-        percent(fees, categories, "REGISTRATION_TAX", "OTHER", "2", from);
 
         fixed(fees, categories, "ROAD_USE", "PASSENGER_CAR_4", 1_560_000, from);
         fixed(fees, categories, "ROAD_USE", "PASSENGER_CAR_7", 1_800_000, from);
@@ -272,13 +266,6 @@ public class DataSeeder implements CommandLineRunner {
                 .build();
     }
 
-    private void plate(Map<String, FeeDefinition> fees, Map<String, VehicleCategory> categories,
-                       String category, FeeZone zone, long amount, LocalDate from) {
-        feeRuleRepository.save(baseRule(fees.get("LICENSE_PLATE"), categories.get(category), from)
-                .feeZone(zone).calculationType(FeeCalculationType.FIXED)
-                .fixedAmount(BigDecimal.valueOf(amount)).build());
-    }
-
     private void fixed(Map<String, FeeDefinition> fees, Map<String, VehicleCategory> categories,
                        String feeCode, String category, long amount, LocalDate from) {
         feeRuleRepository.save(baseRule(fees.get(feeCode), categories.get(category), from)
@@ -299,13 +286,6 @@ public class DataSeeder implements CommandLineRunner {
         feeRuleRepository.save(baseRule(fees.get(feeCode), categories.get(category), from)
                 .calculationType(FeeCalculationType.PERCENT_OF_LIST_PRICE)
                 .percentage(new BigDecimal(percentage)).build());
-    }
-
-    private void percentZone(Map<String, FeeDefinition> fees, Map<String, VehicleCategory> categories,
-                             String feeCode, String category, FeeZone zone, String percentage, LocalDate from) {
-        feeRuleRepository.save(baseRule(fees.get(feeCode), categories.get(category), from)
-                .feeZone(zone).calculationType(FeeCalculationType.PERCENT_OF_LIST_PRICE)
-                .percentage(new BigDecimal(percentage)).priority(10).build());
     }
 
     private FeeRule.FeeRuleBuilder baseRule(FeeDefinition definition, VehicleCategory category, LocalDate from) {

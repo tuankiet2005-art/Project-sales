@@ -21,6 +21,9 @@ public record CalculateOnRoadCostResponse(
         BigDecimal estimatedOnRoadTotal,
         BigDecimal deposit,
         List<AccessoryItem> accessories,
-        String currency
+        String currency,
+        String usageType,
+        BigDecimal discountPercent,
+        List<String> appliedOfferIds
 ) {
 }

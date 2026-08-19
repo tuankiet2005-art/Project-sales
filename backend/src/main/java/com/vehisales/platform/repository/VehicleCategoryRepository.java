@@ -11,4 +11,6 @@ public interface VehicleCategoryRepository extends JpaRepository<VehicleCategory
     List<VehicleCategory> findAllByOrderBySortOrderAsc();
 
     Optional<VehicleCategory> findByCode(String code);
+
+    Optional<VehicleCategory> findByCodeIgnoreCase(String code);
 }

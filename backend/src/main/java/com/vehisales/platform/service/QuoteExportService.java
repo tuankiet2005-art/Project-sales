@@ -9,9 +9,21 @@ import com.vehisales.platform.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.TextAlign;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
+import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
+import org.apache.poi.xssf.usermodel.XSSFDrawing;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFTextBox;
+import org.apache.poi.xssf.usermodel.XSSFTextParagraph;
+import org.apache.poi.xssf.usermodel.XSSFTextRun;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.openxmlformats.schemas.drawingml.x2006.spreadsheetDrawing.CTOneCellAnchor;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,12 +44,14 @@ public class QuoteExportService {
 
     private final VehicleRepository vehicleRepository;
     private final OnRoadCostService onRoadCostService;
+    private final QuoteHistoryService quoteHistoryService;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public byte[] export(ExportQuoteRequest request) {
         Vehicle vehicle = vehicleRepository.findByIdAndActiveTrue(request.vehicleId())
                 .orElseThrow(() -> new ResourceNotFoundException("Vehicle", request.vehicleId()));
         CalculateOnRoadCostResponse calc = onRoadCostService.calculate(request.toCalculateRequest());
+        quoteHistoryService.persist(request, calc, vehicle);
 
         try (InputStream in = new ClassPathResource("templates/bang-bao-gia.xlsx").getInputStream();
              XSSFWorkbook workbook = new XSSFWorkbook(in);
@@ -46,6 +60,7 @@ public class QuoteExportService {
             Sheet sheet = resolveSheet(workbook, vehicle.getQuoteSheetName());
             workbook.setActiveSheet(workbook.getSheetIndex(sheet));
             fillQuote(sheet, vehicle, calc, request);
+            revealHeaderLogos(sheet, request.language());
             translateSheet(sheet, request.language());
 
             workbook.write(out);
@@ -71,6 +86,203 @@ public class QuoteExportService {
     public String filename(ExportQuoteRequest request) {
         String language = QuoteLabels.normalize(request.language());
         return "quote-" + language + ".xlsx";
+    }
+
+    private void revealHeaderLogos(Sheet sheet, String language) {
+        for (int index = 0; index < sheet.getNumMergedRegions(); index++) {
+            CellRangeAddress range = sheet.getMergedRegion(index);
+            Row firstRow = sheet.getRow(range.getFirstRow());
+            if (firstRow == null) {
+                continue;
+            }
+            Cell first = firstRow.getCell(range.getFirstColumn());
+            String text = cellText(first);
+            if (text == null || (!text.toUpperCase().contains("MOVEO") && !text.toUpperCase().contains("MITSUBISHI"))) {
+                continue;
+            }
+            XSSFWorkbook workbook = (XSSFWorkbook) sheet.getWorkbook();
+            XSSFCellStyle style = workbook.createCellStyle();
+            style.cloneStyleFrom(first.getCellStyle());
+            style.setAlignment(HorizontalAlignment.CENTER);
+            style.setVerticalAlignment(VerticalAlignment.CENTER);
+            style.setWrapText(true);
+            first.setCellStyle(style);
+            first.setCellValue("");
+            for (int rowIndex = range.getFirstRow(); rowIndex <= range.getLastRow(); rowIndex++) {
+                Row row = sheet.getRow(rowIndex);
+                if (row != null) {
+                    row.setHeightInPoints(Math.max(row.getHeightInPoints(), 22f));
+                }
+            }
+            String headerText = fitHeaderBetweenLogos(text);
+            if (!QuoteLabels.isVietnamese(language)) {
+                headerText = QuoteLabels.translate(headerText, language);
+            }
+            composeMergedHeader(sheet, range, headerText);
+            return;
+        }
+    }
+
+    private void composeMergedHeader(Sheet sheet, CellRangeAddress header, String text) {
+        if (!(sheet instanceof XSSFSheet xssfSheet)) {
+            return;
+        }
+        XSSFDrawing drawing = xssfSheet.getDrawingPatriarch();
+        if (drawing == null) {
+            return;
+        }
+        long headerHeight = headerHeightEmu(sheet, header);
+        long totalWidth = 0;
+        for (int col = header.getFirstColumn(); col <= header.getLastColumn(); col++) {
+            totalWidth += columnWidthEmu(xssfSheet, col);
+        }
+        final int edge = 50_000;
+        final int gap = 120_000;
+        long mitsuWidth = 0;
+        long mitsuHeight = 0;
+        long moveoWidth = 0;
+        long moveoHeight = 0;
+        CTOneCellAnchor mitsu = null;
+        CTOneCellAnchor moveo = null;
+        for (CTOneCellAnchor anchor : drawing.getCTDrawing().getOneCellAnchorList()) {
+            if (anchor.getPic() == null || anchor.getPic().getNvPicPr() == null) {
+                continue;
+            }
+            String name = anchor.getPic().getNvPicPr().getCNvPr().getName();
+            if (isPicture(name, "image3.png")) {
+                mitsu = anchor;
+                mitsuHeight = Math.round(headerHeight * 0.78d);
+                mitsuWidth = Math.round(mitsuHeight * 94d / 70d);
+            } else if (isPicture(name, "image12.png")) {
+                moveo = anchor;
+                moveoHeight = Math.min(anchor.getExt().getCy(), Math.round(headerHeight * 0.72d));
+                moveoWidth = anchor.getExt().getCx();
+                if (anchor.getExt().getCy() > 0 && moveoHeight != anchor.getExt().getCy()) {
+                    moveoWidth = Math.round(moveoWidth * (moveoHeight / (double) anchor.getExt().getCy()));
+                }
+            }
+        }
+        long textStart = edge + mitsuWidth + gap;
+        long textEnd = totalWidth - edge - moveoWidth - gap;
+        if (textEnd <= textStart + 200_000) {
+            textEnd = totalWidth - edge - gap;
+        }
+        if (mitsu != null) {
+            pinPicture(xssfSheet, mitsu, header, edge, mitsuWidth, mitsuHeight, headerHeight);
+        }
+        if (moveo != null) {
+            pinPicture(xssfSheet, moveo, header, totalWidth - edge - moveoWidth, moveoWidth, moveoHeight, headerHeight);
+        }
+        int[] start = colAndOffset(xssfSheet, header, textStart);
+        int[] end = colAndOffset(xssfSheet, header, textEnd);
+        Row lastRow = sheet.getRow(header.getLastRow());
+        int lastRowEmu = (int) Math.round((lastRow == null ? 22f : lastRow.getHeightInPoints()) * 12700d);
+        XSSFClientAnchor textAnchor = drawing.createAnchor(
+                start[1], 0, end[1], lastRowEmu,
+                start[0], header.getFirstRow(), end[0], header.getLastRow());
+        XSSFTextBox box = drawing.createTextbox(textAnchor);
+        box.setNoFill(true);
+        box.setLineWidth(0);
+        box.setVerticalAlignment(VerticalAlignment.CENTER);
+        box.clearText();
+        for (String line : text.split("\n")) {
+            XSSFTextParagraph paragraph = box.addNewTextParagraph(line);
+            paragraph.setTextAlign(TextAlign.CENTER);
+            for (XSSFTextRun run : paragraph.getTextRuns()) {
+                run.setFont("Times New Roman");
+                run.setFontSize(12);
+                run.setBold(true);
+                run.setFontColor(new java.awt.Color(0x1F, 0x1F, 0x1F));
+            }
+        }
+    }
+
+    private void pinPicture(
+            XSSFSheet sheet,
+            CTOneCellAnchor anchor,
+            CellRangeAddress header,
+            long x,
+            long width,
+            long height,
+            long headerHeight
+    ) {
+        int[] pos = colAndOffset(sheet, header, Math.max(0, x));
+        long top = Math.max(0, (headerHeight - height) / 2);
+        anchor.getFrom().setCol(pos[0]);
+        anchor.getFrom().setColOff(pos[1]);
+        anchor.getFrom().setRow(header.getFirstRow());
+        anchor.getFrom().setRowOff((int) Math.min(Integer.MAX_VALUE, top));
+        anchor.getExt().setCx(width);
+        anchor.getExt().setCy(height);
+    }
+
+    private boolean isPicture(String name, String fileName) {
+        if (name == null) {
+            return false;
+        }
+        String trimmed = name.trim();
+        return trimmed.equalsIgnoreCase(fileName) || trimmed.equalsIgnoreCase(fileName.replace(".png", ""));
+    }
+
+    private long columnWidthEmu(XSSFSheet sheet, int column) {
+        return Math.round(sheet.getColumnWidthInPixels(column) * 9525d);
+    }
+
+    private int[] colAndOffset(XSSFSheet sheet, CellRangeAddress header, long emuFromStart) {
+        long remaining = Math.max(0, emuFromStart);
+        for (int col = header.getFirstColumn(); col <= header.getLastColumn(); col++) {
+            long width = columnWidthEmu(sheet, col);
+            if (remaining <= width || col == header.getLastColumn()) {
+                return new int[]{col, (int) Math.min(Integer.MAX_VALUE, remaining)};
+            }
+            remaining -= width;
+        }
+        return new int[]{header.getLastColumn(), 0};
+    }
+
+    private long headerHeightEmu(Sheet sheet, CellRangeAddress header) {
+        long headerHeight = 0;
+        for (int rowIndex = header.getFirstRow(); rowIndex <= header.getLastRow(); rowIndex++) {
+            Row row = sheet.getRow(rowIndex);
+            float points = row == null ? sheet.getDefaultRowHeightInPoints() : row.getHeightInPoints();
+            headerHeight += Math.round(points * 12700d);
+        }
+        return headerHeight;
+    }
+
+    private String fitHeaderBetweenLogos(String text) {
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        for (String raw : text.replace("\r", "").split("\n")) {
+            for (String part : raw.split("\\s+-\\s+")) {
+                lines.addAll(wrapHeaderLine(part.trim(), 38));
+            }
+        }
+        return String.join("\n", lines);
+    }
+
+    private java.util.List<String> wrapHeaderLine(String text, int maxChars) {
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        if (text.isBlank()) {
+            return lines;
+        }
+        String[] words = text.split("\\s+");
+        StringBuilder current = new StringBuilder();
+        for (String word : words) {
+            if (current.length() == 0) {
+                current.append(word);
+                continue;
+            }
+            if (current.length() + 1 + word.length() <= maxChars) {
+                current.append(' ').append(word);
+            } else {
+                lines.add(current.toString());
+                current = new StringBuilder(word);
+            }
+        }
+        if (current.length() > 0) {
+            lines.add(current.toString());
+        }
+        return lines;
     }
 
     private void translateSheet(Sheet sheet, String language) {
@@ -111,10 +323,10 @@ public class QuoteExportService {
                 .orElse("");
 
         writeAfterLabel(sheet, "Khách hàng:", "Khách hàng: " + request.customerName());
-        writeAfterLabel(sheet, "Địa chỉ:", "Địa chỉ: " + nullToEmpty(request.customerAddress()));
+        writeAfterLabel(sheet, "Địa chỉ:", "Địa chỉ: " + padAddress(request.customerAddress()));
         writeBesideLabel(sheet, "Loại xe:", vehicle.getName());
-        writeBesideLabel(sheet, "Đời xe:", vehicle.getYear() == null ? "" : String.valueOf(vehicle.getYear()));
-        writeBesideLabel(sheet, "Ngày:", DATE.format(LocalDate.now()));
+        writeAfterLabel(sheet, "Đời xe:", "Đời xe: " + (vehicle.getYear() == null ? "" : vehicle.getYear()));
+        writeAfterLabel(sheet, "Ngày:", "Ngày: " + DATE.format(LocalDate.now()));
         writeBesideLabel(sheet, "Giá niêm yết:", calc.listPrice());
         writeBesideLabel(sheet, "Giảm giá:", zeroIfNull(calc.discountAmount()));
         writeBesideLabel(sheet, "Giá Bán:", calc.salePrice());
@@ -201,5 +413,10 @@ public class QuoteExportService {
 
     private String nullToEmpty(String value) {
         return value == null ? "" : value;
+    }
+
+    private String padAddress(String address) {
+        String value = nullToEmpty(address);
+        return "Địa chỉ: " + value + "                                                                                          TVBH:        - SĐT: ";
     }
 }

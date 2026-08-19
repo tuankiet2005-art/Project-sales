@@ -17,6 +17,9 @@ public record CalculateOnRoadCostRequest(
         BigDecimal registrationServiceFee,
         BigDecimal micaPlateFee,
         BigDecimal inspectionFee,
-        List<AccessoryItem> accessories
+        List<AccessoryItem> accessories,
+        String usageType,
+        List<String> selectedOfferIds,
+        List<String> forgoneOfferIds
 ) {
 }

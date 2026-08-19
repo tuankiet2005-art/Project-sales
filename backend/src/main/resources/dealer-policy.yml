@@ -1,0 +1,36 @@
+# Dealer pricing — edit percents and offers here, then restart the API.
+# Discount is percent of list price (Giá niêm yết) by usage type.
+
+dealer-policy:
+  discount:
+    # Xe cá nhân / private
+    private-percent: 5
+    # Xe kinh doanh / thương mại
+    commercial-percent: 8
+  offers:
+    - id: gift-accessories
+      kind: FORGO_FOR_CREDIT
+      amount: 15000000
+      title:
+        vi: "Phụ kiện tặng theo xe"
+        en: "Complimentary accessories"
+        zh: "随车赠送配件"
+        ja: "車両付属の贈呈装備"
+      description:
+        vi: "Nhận bộ phụ kiện tặng hoặc không nhận và trừ 15.000.000 vào giá xe."
+        en: "Take the gift pack, or forgo it and deduct VND 15,000,000 from the vehicle price."
+        zh: "领取赠品配件，或放弃并将 15,000,000 越盾从车价中扣除。"
+        ja: "贈呈装備を受け取るか、辞退して車両価格から 15,000,000 VND を差し引きます。"
+    - id: month-campaign
+      kind: EXTRA_PERCENT
+      percent: 1.5
+      title:
+        vi: "Chương trình khuyến mại tháng"
+        en: "This month's campaign"
+        zh: "本月促销"
+        ja: "今月のキャンペーン"
+      description:
+        vi: "Áp dụng giảm thêm 1.5% giá niêm yết."
+        en: "Apply an extra 1.5% off list price."
+        zh: "再减免标价的 1.5%。"
+        ja: "車両本体価格からさらに 1.5% 引き。"

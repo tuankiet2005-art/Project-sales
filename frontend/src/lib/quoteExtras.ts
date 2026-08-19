@@ -6,7 +6,6 @@ export function extrasStorageKey(vehicleId: number): string {
 
 export function extrasFromVehicle(vehicle: VehicleDetail): QuoteExtras {
   return {
-    discountAmount: vehicle.discountAmount,
     deposit: vehicle.defaultDeposit,
     registrationServiceFee: vehicle.registrationServiceFee,
     micaPlateFee: vehicle.micaPlateFee,

@@ -1,6 +1,8 @@
 spring:
   application:
     name: vehicle-sales-platform
+  config:
+    import: optional:classpath:fee-policy.yml,optional:classpath:dealer-policy.yml,optional:classpath:license-plate-regions.yml
   profiles:
     default: ${SPRING_PROFILES_ACTIVE:local}
   jpa:
@@ -28,7 +30,11 @@ app:
   seed:
     enabled: ${APP_SEED_ENABLED:false}
   cors:
-    allowed-origins: ${CORS_ORIGINS:http://localhost:5174,http://127.0.0.1:5174}
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5174,http://127.0.0.1:5174,https://project-sales.vercel.app}
+  admin:
+    username: ${ADMIN_USERNAME:admin}
+    password: "${ADMIN_PASSWORD:Admin!!@}"
+    token-secret: ${ADMIN_TOKEN_SECRET:onroad-admin-hmac}
 
 ---
 spring:

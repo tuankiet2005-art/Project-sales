@@ -24,6 +24,7 @@ public record VehicleDetailResponse(
         BigDecimal inspectionFee,
         String defaultColor,
         String availableColors,
+        Map<String, String> colorPhotos,
         String deliveryNote,
         String warrantyNote,
         String gifts,

@@ -1,0 +1,9 @@
+# Vietnam on-road percents — edit this file when a new policy is published, then restart the API.
+# Formula: fee = percent / 100 × Giá Bán (car selling price).
+# Phí bấm biển số is not here — it is a fixed VND amount by province in license-plate-regions.yml.
+
+fee-policy:
+  # Thuế trước bạ — xe cá nhân
+  registration-tax-percent: 10
+  # Thuế trước bạ — xe kinh doanh
+  registration-tax-commercial-percent: 2

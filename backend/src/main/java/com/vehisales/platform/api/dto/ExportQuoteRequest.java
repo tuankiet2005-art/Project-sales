@@ -22,7 +22,10 @@ public record ExportQuoteRequest(
         BigDecimal registrationServiceFee,
         BigDecimal micaPlateFee,
         BigDecimal inspectionFee,
-        List<AccessoryItem> accessories
+        List<AccessoryItem> accessories,
+        String usageType,
+        List<String> selectedOfferIds,
+        List<String> forgoneOfferIds
 ) {
     public CalculateOnRoadCostRequest toCalculateRequest() {
         return new CalculateOnRoadCostRequest(
@@ -37,7 +40,10 @@ public record ExportQuoteRequest(
                 registrationServiceFee,
                 micaPlateFee,
                 inspectionFee,
-                accessories
+                accessories,
+                usageType,
+                selectedOfferIds,
+                forgoneOfferIds
         );
     }
 }

@@ -18,6 +18,24 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Long> {
     Optional<Vehicle> findByIdAndActiveTrue(Long id);
 
     @EntityGraph(attributePaths = {"category", "brand"})
+    @Query("SELECT v FROM Vehicle v ORDER BY v.name ASC")
+    List<Vehicle> findAllDetailedByOrderByNameAsc();
+
+    @EntityGraph(attributePaths = {"category", "brand"})
+    @Query("SELECT v FROM Vehicle v WHERE v.id = :id")
+    Optional<Vehicle> findDetailedById(@Param("id") Long id);
+
+    Optional<Vehicle> findByBrand_CodeIgnoreCaseAndModelIgnoreCaseAndNameIgnoreCase(
+            String brandCode,
+            String model,
+            String name
+    );
+
+    boolean existsByBrand_Id(Long brandId);
+
+    boolean existsByCategory_Id(Long categoryId);
+
+    @EntityGraph(attributePaths = {"category", "brand"})
     @Query("""
             SELECT v FROM Vehicle v
             WHERE v.active = true
