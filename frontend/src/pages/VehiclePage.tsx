@@ -10,7 +10,7 @@ import { codedOption, locationLabel } from "../lib/labels";
 import { extrasFromVehicle, loadExtras, saveExtras } from "../lib/quoteExtras";
 import { colorPhoto } from "../lib/vehicleColor";
 import { defaultPolicyChoices, loadPolicyChoices, localizedPolicyText, savePolicyChoices } from "../lib/quotePolicy";
-import type { Brand, Category, DealerOffer, DealerPolicy, Location, QuoteExtras, UsageType, VehicleDetail } from "../types";
+import type { Category, DealerOffer, DealerPolicy, Location, QuoteExtras, UsageType, VehicleDetail } from "../types";
 
 export function VehiclePage() {
   const { vehicleId, brandCode = "" } = useParams();
@@ -18,7 +18,6 @@ export function VehiclePage() {
   const navigate = useNavigate();
   const { t, lang } = useI18n();
 
-  const [brand, setBrand] = useState<Brand | null>(null);
   const [vehicle, setVehicle] = useState<VehicleDetail | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -45,12 +44,11 @@ export function VehiclePage() {
     setUsageType(stored.usageType);
     setSelectedOfferIds(stored.selectedOfferIds);
     setForgoneOfferIds(stored.forgoneOfferIds);
-    Promise.all([api.getVehicle(id), api.getCategories(), api.getLocations(), api.getBrand(brandCode), api.getDealerPolicy()])
-      .then(([nextVehicle, nextCategories, nextLocations, nextBrand, nextPolicy]) => {
+    Promise.all([api.getVehicle(id), api.getCategories(), api.getLocations(), api.getDealerPolicy()])
+      .then(([nextVehicle, nextCategories, nextLocations, nextPolicy]) => {
         setVehicle(nextVehicle);
         setCategories(nextCategories);
         setLocations(nextLocations);
-        setBrand(nextBrand);
         setPolicy(nextPolicy);
         setCategoryId(nextVehicle.category.id);
         setColor(nextVehicle.defaultColor ?? "");
