@@ -1,9 +1,11 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import { Header } from "../components/Header";
 import { VehicleCard } from "../components/VehicleCard";
 import { useI18n } from "../i18n/LanguageContext";
+import { softIncludes } from "../lib/softSearch";
 import type { Brand, Category, VehicleSummary } from "../types";
 
 export function HomePage() {
@@ -30,7 +32,7 @@ export function HomePage() {
     setLoading(true);
     setError(null);
     api
-      .searchVehicles(searchParams.get("q") ?? "", brandCode, categoryId)
+      .searchVehicles("", brandCode)
       .then((data) => {
         if (!cancelled) {
           setVehicles(data);
@@ -49,24 +51,24 @@ export function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [searchParams, categoryId, brandCode]);
+  }, [brandCode]);
 
   const selectedCategory = useMemo(
     () => categories.find((item) => item.id === categoryId),
     [categories, categoryId]
   );
 
-  function applySearch(event: FormEvent) {
-    event.preventDefault();
-    const next = new URLSearchParams();
-    if (keyword.trim()) {
-      next.set("q", keyword.trim());
-    }
-    if (categoryId) {
-      next.set("category", String(categoryId));
-    }
-    setSearchParams(next);
-  }
+  const visibleVehicles = useMemo(
+    () =>
+      vehicles.filter((vehicle) => {
+        const inCategory = !categoryId || vehicle.category.id === categoryId;
+        return (
+          inCategory &&
+          softIncludes(keyword, vehicle.name, vehicle.model, vehicle.brand, vehicle.vehicleType, vehicle.year)
+        );
+      }),
+    [vehicles, categoryId, keyword]
+  );
 
   function selectCategory(id?: number) {
     setCategoryId(id);
@@ -91,20 +93,15 @@ export function HomePage() {
             {t("heroTitle")}
           </h1>
 
-          <form onSubmit={applySearch} className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <label className="relative mt-8 block">
+            <Search className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-ink/40" />
             <input
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
               placeholder={t("searchPlaceholder")}
-              className="h-14 flex-1 rounded-2xl border border-ink/10 bg-white px-5 text-base outline-none ring-copper/30 focus:ring-4"
+              className="h-14 w-full rounded-2xl border border-ink/10 bg-white pl-14 pr-5 text-base outline-none ring-copper/30 focus:ring-4"
             />
-            <button
-              type="submit"
-              className="h-14 rounded-2xl bg-ink px-7 text-sm font-semibold text-paper transition hover:bg-forest"
-            >
-              {t("searchButton")}
-            </button>
-          </form>
+          </label>
 
           <div className="mt-6 flex flex-wrap gap-2">
             <button
@@ -139,7 +136,7 @@ export function HomePage() {
               {selectedCategory ? t(`category.${selectedCategory.code}`) : t("availableVehicles")}
             </h2>
             <p className="mt-1 text-sm text-ink/55">
-              {loading ? t("loadingCatalog") : t("modelsCount", { n: vehicles.length })}
+              {loading ? t("loadingCatalog") : t("modelsCount", { n: visibleVehicles.length })}
             </p>
           </div>
 
@@ -150,14 +147,14 @@ export function HomePage() {
             </div>
           )}
 
-          {!loading && !error && vehicles.length === 0 && (
+          {!loading && !error && visibleVehicles.length === 0 && (
             <p className="rounded-2xl bg-white px-5 py-10 text-center text-ink/60">
               {brand && !brand.ready ? t("emptyBrand") : t("emptySearch")}
             </p>
           )}
 
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {vehicles.map((vehicle) => (
+            {visibleVehicles.map((vehicle) => (
               <VehicleCard key={vehicle.id} vehicle={vehicle} brandCode={brandCode} />
             ))}
           </div>

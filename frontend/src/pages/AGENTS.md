@@ -7,13 +7,13 @@ Route-level screens for brand pick, catalog search, vehicle confirm, and on-road
 ## Ownership
 
 - `BrandPortal.tsx` — `/`; each ready brand box is a full-card link (photo included)
-- `HomePage.tsx` — `/brand/:brandCode`
-- `VehiclePage.tsx` — confirm details, usage (private / commercial), and company policies
+- `HomePage.tsx` — `/brand/:brandCode`; live soft search for cars (accents ignored)
+- `VehiclePage.tsx` — confirm details, usage (private / commercial), company policies, and a soft province search
 - `OnRoadQuotePage.tsx` — load extras, calculate, equal left Price / right Accessories, sheet, Excel + PDF export
-- `AdminDataPage.tsx` — `/admin` easy forms for catalog + fee/dealer/plate policies
+- `AdminDataPage.tsx` — `/admin` easy forms; catalog and plate lists have live soft search
 - App-wide login: `LoginScreen` in `App.tsx` — hard `admin` account; form centered; pages render only after sign-in
 - Page titles stand alone — no lead/tagline under the title
-- `QuoteHistoryPage.tsx` — `/quotes` live-filters saved reports by typed characters; Vietnamese accents are ignored so `Nguyen` matches `Nguyễn`
+- `QuoteHistoryPage.tsx` — `/quotes` live-filters saved reports; Vietnamese accents are ignored (`lib/softSearch.ts`)
 
 ## Local Contracts
 

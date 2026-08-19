@@ -1,12 +1,13 @@
-import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { colorPhoto } from "../lib/vehicleColor";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Header } from "../components/Header";
 import { api, UnauthorizedError } from "../api/client";
 import { useI18n } from "../i18n/LanguageContext";
 import type { Lang } from "../i18n/translations";
 import { fillFromVietnamese } from "../lib/fromVietnamese";
 import { locationLabel } from "../lib/labels";
+import { softIncludes } from "../lib/softSearch";
 import type {
   AdminBrand,
   AdminCategory,
@@ -133,6 +134,7 @@ export function AdminDataPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [catalogQuery, setCatalogQuery] = useState("");
 
   async function loadLookups() {
     const [nextBrands, nextCategories, nextLocations, nextFees] = await Promise.all([
@@ -174,6 +176,7 @@ export function AdminDataPage() {
   useEffect(() => {
     void load(tab);
     setDraft(null);
+    setCatalogQuery("");
   }, [tab]);
 
   function startNew() {
@@ -314,6 +317,25 @@ export function AdminDataPage() {
     return String(value);
   }
 
+  const visibleRows = useMemo(() => {
+    if (!isCatalog(tab)) {
+      return rows;
+    }
+    return rows.filter((row) =>
+      softIncludes(
+        catalogQuery,
+        ...COLUMNS[tab].map((column) => displayCell(column, row)),
+        row.name,
+        row.nameEn,
+        row.nameZh,
+        row.nameJa,
+        row.model,
+        row.code,
+        row.brandCode
+      )
+    );
+  }, [rows, catalogQuery, tab, lang]);
+
   return (
     <div className="min-h-screen">
       <Header />
@@ -404,14 +426,25 @@ export function AdminDataPage() {
         {isCatalog(tab) && (
           <>
             <div className="mt-4 overflow-x-auto rounded-2xl border border-ink/8 bg-white shadow-card">
-              <div className="flex items-center justify-between border-b border-ink/8 px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/8 px-4 py-3">
                 <p className="text-sm font-semibold">
-                  {t(TABS.find((item) => item.id === tab)?.labelKey ?? "")} · {rows.length}
+                  {t(TABS.find((item) => item.id === tab)?.labelKey ?? "")} · {visibleRows.length}
                 </p>
-                <button type="button" onClick={startNew} className="inline-flex items-center gap-1.5 text-sm font-semibold text-copper">
-                  <Plus className="h-4 w-4" />
-                  {t("admin.new")}
-                </button>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
+                    <input
+                      value={catalogQuery}
+                      onChange={(event) => setCatalogQuery(event.target.value)}
+                      placeholder={t("admin.search")}
+                      className="h-10 w-56 rounded-lg border border-ink/10 bg-paper pl-9 pr-3 text-sm"
+                    />
+                  </label>
+                  <button type="button" onClick={startNew} className="inline-flex items-center gap-1.5 text-sm font-semibold text-copper">
+                    <Plus className="h-4 w-4" />
+                    {t("admin.new")}
+                  </button>
+                </div>
               </div>
               {loading ? (
                 <p className="px-4 py-8 text-sm text-ink/55">{t("loadingCatalog")}</p>
@@ -428,7 +461,7 @@ export function AdminDataPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((row) => (
+                    {visibleRows.map((row) => (
                       <tr key={String(row.id)} className="border-t border-ink/6">
                         {COLUMNS[tab].map((column) => (
                           <td key={column} className="px-3 py-2">
@@ -972,6 +1005,7 @@ function PlateRegionsForm({
 }) {
   const areaI = value.areas?.AREA_I?.amount ?? 0;
   const areaII = value.areas?.AREA_II?.amount ?? 0;
+  const [plateQuery, setPlateQuery] = useState("");
 
   function setAmount(area: string, amount: number) {
     onChange({
@@ -1000,12 +1034,26 @@ function PlateRegionsForm({
             <NumberField label={t("admin.field.areaIIAmount")} value={areaII} onChange={(next) => setAmount("AREA_II", next)} />
           </div>
         </div>
+        <label className="relative mt-3 block">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
+          <input
+            value={plateQuery}
+            onChange={(event) => setPlateQuery(event.target.value)}
+            placeholder={t("provinceSearch")}
+            className="h-10 w-full rounded-lg border border-ink/10 bg-paper pl-9 pr-3 text-sm"
+          />
+        </label>
       </div>
       {["NORTH", "CENTRAL", "SOUTH"].map((region) => (
         <div key={region} className="rounded-2xl border border-ink/8 bg-white p-4 shadow-card">
           <p className="text-sm font-semibold">{t(`admin.opt.${region}`)}</p>
           <div className="mt-3 space-y-2">
-            {(value.regions[region] ?? []).map((unit, index) => (
+            {(value.regions[region] ?? []).map((unit, index) => {
+              const label = plateUnitName(unit, locations, lang);
+              if (!softIncludes(plateQuery, label, unit.name, unit.code)) {
+                return null;
+              }
+              return (
               <div key={`${region}-${index}`} className="grid gap-2 md:grid-cols-[6fr_4fr_auto]">
                 {locations.find((item) => item.code === unit.code) ? (
                   <p className="flex h-10 items-center rounded-lg border border-ink/10 bg-paper px-3 text-sm">
@@ -1039,7 +1087,8 @@ function PlateRegionsForm({
                   {t("admin.remove")}
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>
           <button
             type="button"

@@ -10,6 +10,7 @@ Shared chrome and quote widgets used by pages.
 - `QuotePricePanel` / `QuoteAccessoriesPanel` in `QuoteAdjustments.tsx` — equal left/right editors
 - `QuoteSheet.tsx` — visual replica of the dealer Excel quote; `#quote-sheet` is the PDF source
 - `VehicleCard.tsx`, `CostBreakdown.tsx` — catalog / fee list
+- `ProvincePicker.tsx` — type-to-filter province list; `Ha Noi` matches `Hà Nội`
 
 ## Local Contracts
 

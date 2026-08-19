@@ -3,10 +3,11 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { Header } from "../components/Header";
+import { ProvincePicker } from "../components/ProvincePicker";
 import { useI18n } from "../i18n/LanguageContext";
 import type { Lang } from "../i18n/translations";
 import { formatVnd } from "../lib/format";
-import { codedOption, locationLabel } from "../lib/labels";
+import { codedOption } from "../lib/labels";
 import { extrasFromVehicle, loadExtras, saveExtras } from "../lib/quoteExtras";
 import { colorPhoto } from "../lib/vehicleColor";
 import { defaultPolicyChoices, loadPolicyChoices, localizedPolicyText, savePolicyChoices } from "../lib/quotePolicy";
@@ -242,17 +243,7 @@ export function VehiclePage() {
               </div>
 
               <label className="mt-5 block text-sm font-medium">{t("provinceCity")}</label>
-              <select
-                value={locationId ?? ""}
-                onChange={(event) => setLocationId(Number(event.target.value))}
-                className="mt-1 h-12 w-full rounded-xl border border-ink/10 bg-paper px-3"
-              >
-                {locations.map((location) => (
-                  <option key={location.id} value={location.id}>
-                    {locationLabel(location, lang)}
-                  </option>
-                ))}
-              </select>
+              <ProvincePicker locations={locations} value={locationId} onChange={setLocationId} />
 
               <p className="mt-5 text-sm font-medium">{t("dealerPolicyTitle")}</p>
               {policy && (
